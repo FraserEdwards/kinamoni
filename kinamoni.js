@@ -23,76 +23,80 @@ console.log(web3.isConnected);
 //Initialise voice service
 myVoiceIt.initialize('36a47c282a19448b9172554d058752b7');
 
-var obj = {
-  '1':{ 
-    "id" : 1,
-    "name" : "Fraser Edwards",
-    "number" : +447912436449,
-  },'2':{ 
-    "id" : 2,
-    "name" : "Tom Staley",
-    "number" : +447595447886,
-  },'3':{ 
-    "id" : 3,
-    "name" : "Gerrard Cowburn",
-    "number" : +447875648296,
+var file = '/Users/Fraser/Desktop/Repository/kinamoni/data.json'
+
+var balances = {
+    '447912436449':{
+    "balance": 700,
+    "enrolled": false,    
+  },'447595447886':{
+    "balance": 600,
+    "enrolled": false,
+  },'447875648296':{ 
+    "balance": 500,
+    "enrolled": false,
   },
 };
 
+json.writeFile(file, balances, function (err) {
+  console.error(err)
+})
+
 var abi = [{"constant":true,"inputs":[],"name":"minter","outputs":[{"name":"","type":"address"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"source","type":"uint256"},{"name":"destination","type":"uint256"}],"name":"validate","outputs":[{"name":"","type":"bool"},{"name":"","type":"string"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"destination","type":"uint256"},{"name":"amount","type":"uint256"}],"name":"cashout","outputs":[{"name":"","type":"bool"},{"name":"","type":"string"},{"name":"","type":"uint256"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"source","type":"uint256"},{"name":"destination","type":"uint256"},{"name":"amount","type":"uint256"}],"name":"transfer","outputs":[{"name":"","type":"bool"},{"name":"","type":"string"},{"name":"","type":"uint256"},{"name":"","type":"uint256"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"destination","type":"uint256"},{"name":"amount","type":"uint256"}],"name":"cashin","outputs":[{"name":"","type":"bool"},{"name":"","type":"string"},{"name":"","type":"uint256"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"source","type":"uint256"}],"name":"checkbalance","outputs":[{"name":"","type":"bool"},{"name":"","type":"uint256"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"source","type":"uint256"},{"name":"destination","type":"uint256"}],"name":"register","outputs":[{"name":"","type":"bool"},{"name":"","type":"string"}],"payable":false,"type":"function"},{"inputs":[],"payable":false,"type":"constructor"},{"anonymous":false,"inputs":[{"indexed":false,"name":"status","type":"bool"},{"indexed":false,"name":"balance","type":"uint256"}],"name":"checkbalanceevent","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"name":"status","type":"bool"},{"indexed":false,"name":"reason","type":"string"}],"name":"registerevent","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"name":"status","type":"bool"},{"indexed":false,"name":"reason","type":"string"}],"name":"validateevent","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"name":"status","type":"bool"},{"indexed":false,"name":"reason","type":"string"},{"indexed":false,"name":"dstbalance","type":"uint256"}],"name":"cashinevent","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"name":"status","type":"bool"},{"indexed":false,"name":"reason","type":"string"},{"indexed":false,"name":"dstbalance","type":"uint256"}],"name":"cashoutevent","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"name":"status","type":"bool"},{"indexed":false,"name":"reason","type":"string"},{"indexed":false,"name":"srcbalance","type":"uint256"},{"indexed":false,"name":"dstbalance","type":"uint256"}],"name":"transferevent","type":"event"}]
 
-var details = '/Users/Fraser/Desktop/SMSBlockchain/data.json'
 var MyContract = web3.eth.contract(abi);
 var mynodeaddress = '0xdb562d6e1472f94d241cd5492a08a10d1b075c2e';
 var myContractAddress = '0x4d076caf2c71878f767bb38dde6bc2a9fed8aeb5';
 var myContractInstance = MyContract.at(myContractAddress);
-
-json.writeFile(details, obj, function (err) {
-  console.error(err)
-})
 
 app.post('/', function(req, res) {
     var twilio = require('twilio');
     var twiml = new twilio.TwimlResponse();
     var str = req.body.Body;
     var fromNumber = req.body.From;
-
-    if(!web3.isConnected()) {
-
-        console.log('Web3 Connection Failed');
-
-    } else {
-
-        console.log('Web3 Connected');
-
-    }
+    var hash = "";  
 
     console.log('Incoming message is' + str);
 
     if (str.toLowerCase() == 'check balance'){
-        console.log('Invoking Check Balance function');
+        var fromNumber = fromNumber.substr(1,13);
+        console.log('Checking balance for number: ' + fromNumber);
 
-        var fromNumberBal = fromNumber.substr(1,13);
-        console.log('Checking Number: ' + fromNumberBal);        
-         var sendresult = myContractInstance.checkbalance.sendTransaction(fromNumberBal,
-          {from: mynodeaddress}, function (error, result) {
-            if (!error){
-                console.log('1: '+ result);            
-            }
-            });
-        var event = myContractInstance.checkbalanceevent({event: 'checkbalanceevent'});
-        event.watch(function(error, eventresult){
-            var test = JSON.stringify(eventresult);
-            JSON.parse(test, (key, value) => {
-                if (key == 'balance') { 
-                    twiml.message("Your balance is: £"+ value);
-                    res.writeHead(200, {'Content-Type': 'text/xml'});
-                    res.end(twiml.toString());
-                    console.log('Balance is £' + value);
-                    console.log('EXPECT-CLOSE');
-                };
-            });
-        });
+        if(balances[fromNumber]== true){
+          console.log('Your balance is: £' + balances[fromNumber].balance);
+          twiml.message('Your balance is: £' + balances[fromNumber].balance);
+        
+        } else{
+
+          console.log('You need to register first. To register please text register to this number.');
+          twiml.message('You need to register first. To register please text register to this number.');          
+
+        }
+
+        res.writeHead(200, {'Content-Type': 'text/xml'});
+        res.end(twiml.toString());
+
+        // Blockchain integration
+
+        //  var sendresult = myContractInstance.checkbalance.sendTransaction(fromNumberBal,
+        //   {from: mynodeaddress}, function (error, result) {
+        //     if (!error){
+        //         console.log('1: '+ result);            
+        //     }
+        //   });
+        // var event = myContractInstance.checkbalanceevent({event: 'checkbalanceevent'});
+        // event.watch(function(error, eventresult){
+        //     var test = JSON.stringify(eventresult);
+        //     JSON.parse(test, (key, value) => {
+        //         if (key == 'balance') { 
+        //             twiml.message("Your balance is: £"+ value);
+        //             res.writeHead(200, {'Content-Type': 'text/xml'});
+        //             res.end(twiml.toString());
+        //             console.log('Balance is £' + value);
+        //             console.log('EXPECT-CLOSE');
+        //         };
+        //     });
+        // });
 
     } else if(str.substr(0,str.indexOf(' ')).toLowerCase() == 'send'){
         console.log('Invoking Send Money function');
@@ -102,34 +106,38 @@ app.post('/', function(req, res) {
         var passPhrase = str.substr(str.indexOf('#')+1);
         var fromNumberBal = fromNumber.substr(1,13);
 
-
         console.log('Transfer Value: ' + transfervalue);
         console.log('Destination: ' + toNumber);
         console.log('Source: ' + fromNumberBal);
-        console.log('PassPhrase: ' + passPhrase); 
-        var hash = "";  
-      
+        console.log('PassPhrase: ' + passPhrase);  
 
-        var sendresult = myContractInstance.transfer.sendTransaction(fromNumberBal, toNumber, transfervalue,
-          {from: mynodeaddress}, function (error, result) {
-            if (!error){
-                console.log('1: '+ result);  
-                hash = result;          
-            }
-            });
-        var event = myContractInstance.transferevent({event: 'transferevent'});
-        event.watch(function(error, eventresult){
-            var test = JSON.stringify(eventresult);
-            JSON.parse(test, (key, value) => {
-                if (key == 'srcbalance') { 
-                    twiml.message("You have sent £"+ transfervalue +" to "+ toNumber +", your balance is now "+ value + ". Your transaction reference is: " + hash);
-                    res.writeHead(200, {'Content-Type': 'text/xml'});
-                    res.end(twiml.toString());
-                    console.log("You have sent £"+ transfervalue +" to "+ toNumber +", your balance is now "+ value + ". Your transaction reference is: " + hash);
-                    console.log('EXPECT-CLOSE');
-                };
-            });
-        });
+        twiml.message("You have sent £"+ transfervalue +" to "+ toNumber +", your balance is now "+ value + ". Your transaction reference is: " + hash);
+        res.writeHead(200, {'Content-Type': 'text/xml'});
+        res.end(twiml.toString());
+        console.log("You have sent £"+ transfervalue +" to "+ toNumber +", your balance is now "+ value + ". Your transaction reference is: " + hash); 
+
+        // Blockchain integration
+
+        // var sendresult = myContractInstance.transfer.sendTransaction(fromNumberBal, toNumber, transfervalue,
+        //   {from: mynodeaddress}, function (error, result) {
+        //     if (!error){
+        //         console.log('1: '+ result);  
+        //         hash = result;          
+        //     }
+        //     });
+        // var event = myContractInstance.transferevent({event: 'transferevent'});
+        // event.watch(function(error, eventresult){
+        //     var test = JSON.stringify(eventresult);
+        //     JSON.parse(test, (key, value) => {
+        //         if (key == 'srcbalance') { 
+        //             twiml.message("You have sent £"+ transfervalue +" to "+ toNumber +", your balance is now "+ value + ". Your transaction reference is: " + hash);
+        //             res.writeHead(200, {'Content-Type': 'text/xml'});
+        //             res.end(twiml.toString());
+        //             console.log("You have sent £"+ transfervalue +" to "+ toNumber +", your balance is now "+ value + ". Your transaction reference is: " + hash);
+        //             console.log('EXPECT-CLOSE');
+        //         };
+        //     });
+        // });
     } else if(str.substr(0,str.indexOf(' ')).toLowerCase() == 'pair'){
         console.log('Invoking Pair function');
 
@@ -139,31 +147,35 @@ app.post('/', function(req, res) {
 
         console.log('Destination: ' + pairnumber);
         console.log('Source: ' + fromNumberBal);
-        console.log('Passphrase: ' + passPhrase);         
+        console.log('Passphrase: ' + passPhrase);     
 
-        var pairresult = myContractInstance.register.sendTransaction(fromNumberBal, pairnumber,
-          {from: mynodeaddress}, function (error, result) {
-            if (!error){
-                console.log('1: '+ result);            
-            }
-            });
-        var pairevent = myContractInstance.registerevent({event: 'registerevent'});
-        pairevent.watch(function(error, eventresult){
-            var eventjson = JSON.stringify(eventresult);
-            JSON.parse(eventjson, (key, value) => {
-                if (key == 'status' && value == true) { 
-                    twiml.message("You have paired with "+ pairnumber);
-                    res.writeHead(200, {'Content-Type': 'text/xml'});
-                    res.end(twiml.toString());
-                    console.log("Paired with " + pairnumber);
-                    console.log('EXPECT-CLOSE');
-                };
-            });
-        });
+        twiml.message("You have paired with "+ pairnumber);
+        res.writeHead(200, {'Content-Type': 'text/xml'});
+        res.end(twiml.toString());
+        console.log("Paired with " + pairnumber);
+        console.log('EXPECT-CLOSE');    
+
+        // Blockchain integration
+
+        // var pairresult = myContractInstance.register.sendTransaction(fromNumberBal, pairnumber,
+        //   {from: mynodeaddress}, function (error, result) {
+        //     if (!error){
+        //         console.log('1: '+ result);            
+        //     }
+        //     });
+        // var pairevent = myContractInstance.registerevent({event: 'registerevent'});
+        // pairevent.watch(function(error, eventresult){
+        //     var eventjson = JSON.stringify(eventresult);
+        //     JSON.parse(eventjson, (key, value) => {
+        //         if (key == 'status' && value == true) { 
+
+        //         };
+        //     });
+        // });
 
     } else if (str.toLowerCase() == 'register'){
         console.log('Invoking Register function');
-
+        fromNumber = fromNumber.substr(1,13);
         //Pass your 6 digit developer id as parameter to the intialize method like shown above
         myVoiceIt.createUser({
 	        email: 'user@example.com',
@@ -179,7 +191,15 @@ app.post('/', function(req, res) {
             //The Server Responded with the JSON: { "Result" : "Success" }
 	        }
         });
-        twiml.message("Thanks for your interest, please call this number to authenticate");
+        var parse_obj = JSON.parse(balances);
+        parse_obj.push({fromNumber:{"balances":700,"enrolled":false}});
+        balances = JSON.stringify(parse_obj);
+        console.log(balances);
+        twiml.message("\nHi, welcome to Kinamoni! Please call this number (+441618506427) to enrol yourself using voice biometrics. "
+        + "\nOnce you are enrolled, you will be able to use Kinamoni:\n 1. To get Kinamoni visit your local municipal office who will be "
+        + "able to direct you.\n 2. To check your balance, send 'check balance' to this number.\n 3. To pair with someone, send ''pair"
+        + "<their phone number including country code> to this number. You will be expected to biometrically authenticate each time you pair."
+        + "\n 4. To send money to someone once you have paired with them, send ''send <their phone number including country code > £<value>");
         res.writeHead(200, {'Content-Type': 'text/xml'});
         res.end(twiml.toString());
 
