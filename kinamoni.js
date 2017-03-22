@@ -23,24 +23,9 @@ console.log(web3.isConnected);
 //Initialise voice service
 myVoiceIt.initialize('36a47c282a19448b9172554d058752b7');
 
-var file = '/Users/Fraser/Desktop/Repository/kinamoni/data.json'
-
-var balances = {
-    '447912436449':{
-    "balance": 700,
-    "enrolled": false,    
-  },'447595447886':{
-    "balance": 600,
-    "enrolled": false,
-  },'447875648296':{ 
-    "balance": 500,
-    "enrolled": false,
-  },
-};
-
-json.writeFile(file, balances, function (err) {
-  console.error(err)
-})
+var accounts = []; 
+//accounts.push({id: 447912436449, balance: 600, enrolled: false, pair1: null, pair2: null, pair3: null, pair4: null, pair5: null});
+accounts.push({id: 447952725596, balance: 500, enrolled: false, pair1: null, pair2: null, pair3: null, pair4: null, pair5: null});
 
 var abi = [{"constant":true,"inputs":[],"name":"minter","outputs":[{"name":"","type":"address"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"source","type":"uint256"},{"name":"destination","type":"uint256"}],"name":"validate","outputs":[{"name":"","type":"bool"},{"name":"","type":"string"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"destination","type":"uint256"},{"name":"amount","type":"uint256"}],"name":"cashout","outputs":[{"name":"","type":"bool"},{"name":"","type":"string"},{"name":"","type":"uint256"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"source","type":"uint256"},{"name":"destination","type":"uint256"},{"name":"amount","type":"uint256"}],"name":"transfer","outputs":[{"name":"","type":"bool"},{"name":"","type":"string"},{"name":"","type":"uint256"},{"name":"","type":"uint256"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"destination","type":"uint256"},{"name":"amount","type":"uint256"}],"name":"cashin","outputs":[{"name":"","type":"bool"},{"name":"","type":"string"},{"name":"","type":"uint256"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"source","type":"uint256"}],"name":"checkbalance","outputs":[{"name":"","type":"bool"},{"name":"","type":"uint256"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"source","type":"uint256"},{"name":"destination","type":"uint256"}],"name":"register","outputs":[{"name":"","type":"bool"},{"name":"","type":"string"}],"payable":false,"type":"function"},{"inputs":[],"payable":false,"type":"constructor"},{"anonymous":false,"inputs":[{"indexed":false,"name":"status","type":"bool"},{"indexed":false,"name":"balance","type":"uint256"}],"name":"checkbalanceevent","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"name":"status","type":"bool"},{"indexed":false,"name":"reason","type":"string"}],"name":"registerevent","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"name":"status","type":"bool"},{"indexed":false,"name":"reason","type":"string"}],"name":"validateevent","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"name":"status","type":"bool"},{"indexed":false,"name":"reason","type":"string"},{"indexed":false,"name":"dstbalance","type":"uint256"}],"name":"cashinevent","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"name":"status","type":"bool"},{"indexed":false,"name":"reason","type":"string"},{"indexed":false,"name":"dstbalance","type":"uint256"}],"name":"cashoutevent","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"name":"status","type":"bool"},{"indexed":false,"name":"reason","type":"string"},{"indexed":false,"name":"srcbalance","type":"uint256"},{"indexed":false,"name":"dstbalance","type":"uint256"}],"name":"transferevent","type":"event"}]
 
@@ -48,6 +33,7 @@ var MyContract = web3.eth.contract(abi);
 var mynodeaddress = '0xdb562d6e1472f94d241cd5492a08a10d1b075c2e';
 var myContractAddress = '0x4d076caf2c71878f767bb38dde6bc2a9fed8aeb5';
 var myContractInstance = MyContract.at(myContractAddress);
+var found = false;
 
 app.post('/', function(req, res) {
     var twilio = require('twilio');
@@ -59,17 +45,24 @@ app.post('/', function(req, res) {
     console.log('Incoming message is' + str);
 
     if (str.toLowerCase() == 'check balance'){
-        var fromNumber = fromNumber.substr(1,13);
+        //var fromNumber = fromNumber.substr(1,13);
         console.log('Checking balance for number: ' + fromNumber);
 
-        if(balances[fromNumber]== true){
-          console.log('Your balance is: £' + balances[fromNumber].balance);
-          twiml.message('Your balance is: £' + balances[fromNumber].balance);
-        
-        } else{
+        for (var i = 0; i < accounts.length; i++) {
+          if(accounts[i].id == fromNumber){
+              var balance = accounts[i].balance;
+                found = true;
+          }
+        }
 
-          console.log('You need to register first. To register please text register to this number.');
-          twiml.message('You need to register first. To register please text register to this number.');          
+        if(found == true){
+          console.log('Your balance is: £' + balance);
+          twiml.message('Your balance is: £' + balance);
+        
+        } else {
+
+          //console.log("You need to register first. To register please text 'register' to this number (+441618506427).");
+          twiml.message("You need to register first. To register please text 'register' to this number (+441618506427).");          
 
         }
 
@@ -103,18 +96,43 @@ app.post('/', function(req, res) {
 
         var transfervalue = str.substr(str.indexOf('£')).substr(0,str.indexOf(' ')).substr(1,2);
         var toNumber = str.substr(str.indexOf('+')).substr(1,13);
-        var passPhrase = str.substr(str.indexOf('#')+1);
-        var fromNumberBal = fromNumber.substr(1,13);
 
-        console.log('Transfer Value: ' + transfervalue);
-        console.log('Destination: ' + toNumber);
-        console.log('Source: ' + fromNumberBal);
-        console.log('PassPhrase: ' + passPhrase);  
+        for (var i = 0; i < accounts.length; i++) {
+          if(accounts[i].id == fromNumber){
+              var balance = accounts[i].balance;
+                found = true;
+                var index = i;
+          }
+        }
 
-        twiml.message("You have sent £"+ transfervalue +" to "+ toNumber +", your balance is now "+ value + ". Your transaction reference is: " + hash);
+        if (found == true && (accounts[index].pair1 == pairnumber || accounts[index].pair2 == pairnumber || accounts[index].pair3 == pairnumber || accounts[index].pair4 == pairnumber || accounts[index].pair5 == pairnumber)) {
+          for (var i = 0; i < accounts.length; i++) {
+            if(accounts[i].id == fromNumber || accounts[i].id == toNumber){
+              if(accounts[i].id == fromNumber){
+                accounts[i].balance = accounts[i].balance - transfervalue;              
+              }
+              if(accounts[i].id == toNumber){
+                accounts[i].balance = accounts[i].balance + transfervalue;
+              }
+            }
+          }
+          var hash = randomString(42, '01234567890123456789abcdefghijklmnopqrstuvwxyz');
+          twiml.message("You have sent £"+ transfervalue +" to +"+ toNumber +", your balance is now £"+ accounts[index].balance + ". Your transaction reference is: " + hash);
+          console.log("You have sent £"+ transfervalue +" to +"+ toNumber +", your balance is now £"+ accounts[index].balance + ". Your transaction reference is: " + hash); 
+        } else if(found == true){
+          console.log("You need to pair with this number first. To pair text 'pair <their number including country code>' to this number (+441618506427).");
+          twiml.message("You need to pair with this number first. To pair text 'pair <their number including country code>' to this number (+441618506427)."); 
+
+        } else {
+          console.log("You need to register first. To register please text 'register' to this number (+441618506427).");
+          twiml.message("You need to register first. To register please text 'register' to this number (+441618506427)."); 
+        }
         res.writeHead(200, {'Content-Type': 'text/xml'});
         res.end(twiml.toString());
-        console.log("You have sent £"+ transfervalue +" to "+ toNumber +", your balance is now "+ value + ". Your transaction reference is: " + hash); 
+
+        // console.log('Transfer Value: ' + transfervalue);
+        // console.log('Destination: ' + toNumber);
+        // console.log('Source: ' + fromNumber); 
 
         // Blockchain integration
 
@@ -142,18 +160,50 @@ app.post('/', function(req, res) {
         console.log('Invoking Pair function');
 
         var pairnumber = str.substr(str.indexOf('+')).substr(1,13);
-        var passPhrase = str.substr(str.indexOf('#')+1);
         var fromNumberBal = fromNumber.substr(1,13);
 
-        console.log('Destination: ' + pairnumber);
-        console.log('Source: ' + fromNumberBal);
-        console.log('Passphrase: ' + passPhrase);     
+        //console.log('Destination: ' + pairnumber);
+        //console.log('Source: ' + fromNumberBal);
+        //console.log('Passphrase: ' + passPhrase);
 
-        twiml.message("You have paired with "+ pairnumber);
+        for (var i = 0; i < accounts.length; i++) {
+          if(accounts[i].id == fromNumber){
+                found = true;
+                var enrolled = accounts[i].enrolled;
+                var index = i;
+          }
+        } 
+
+        if(found == true){
+          if(accounts[index].pair1 == pairnumber || accounts[index].pair2 == pairnumber || accounts[index].pair3 == pairnumber || accounts[index].pair4 == pairnumber || accounts[index].pair5 == pairnumber){
+            //console.log("You are already paired with " + pairnumber); 
+            twiml.message("You are already paired with "+ pairnumber);
+          } else {
+            if(accounts[index].pair1 == null){
+              accounts[index].pair1 = pairnumber;
+            } else if (accounts[index].pair2 == null){
+              accounts[index].pair2 = pairnumber;
+            } else if (accounts[index].pair3 == null){
+              accounts[index].pair3 = pairnumber;
+            } else if (accounts[index].pair4 == null){
+              accounts[index].pair4 = pairnumber;
+            } else if (accounts[index].pair5 == null){
+              accounts[index].pair5 = pairnumber;
+            } else {
+              accounts[index].pair5 = pairnumber;              
+            }
+            twiml.message("You have successfully paired with "+ pairnumber);
+            //console.log("Paired with " + pairnumber); 
+          }        
+        } else {
+
+          //console.log("You need to register first. To register please text 'register' to this number (+441618506427).");
+          twiml.message("You need to register first. To register please text 'register' to this number (+441618506427).");          
+
+        }   
+
         res.writeHead(200, {'Content-Type': 'text/xml'});
-        res.end(twiml.toString());
-        console.log("Paired with " + pairnumber);
-        console.log('EXPECT-CLOSE');    
+        res.end(twiml.toString()); 
 
         // Blockchain integration
 
@@ -174,7 +224,7 @@ app.post('/', function(req, res) {
         // });
 
     } else if (str.toLowerCase() == 'register'){
-        console.log('Invoking Register function');
+        //console.log('Invoking Register function');
         fromNumber = fromNumber.substr(1,13);
         //Pass your 6 digit developer id as parameter to the intialize method like shown above
         myVoiceIt.createUser({
@@ -187,19 +237,56 @@ app.post('/', function(req, res) {
 	        callback: function(response){
 	        //ADD CUSTOM CODE HERE TO USE
 	        //DATA RECEIVED IN THE response VARIABLE
-	        console.log("The Server Responded with the JSON: ",response);
+	        //console.log("The Server Responded with the JSON: ",response);
             //The Server Responded with the JSON: { "Result" : "Success" }
 	        }
         });
-        var parse_obj = JSON.parse(balances);
-        parse_obj.push({fromNumber:{"balances":700,"enrolled":false}});
-        balances = JSON.stringify(parse_obj);
-        console.log(balances);
-        twiml.message("\nHi, welcome to Kinamoni! Please call this number (+441618506427) to enrol yourself using voice biometrics. "
-        + "\nOnce you are enrolled, you will be able to use Kinamoni:\n 1. To get Kinamoni visit your local municipal office who will be "
-        + "able to direct you.\n 2. To check your balance, send 'check balance' to this number.\n 3. To pair with someone, send ''pair"
-        + "<their phone number including country code> to this number. You will be expected to biometrically authenticate each time you pair."
-        + "\n 4. To send money to someone once you have paired with them, send ''send <their phone number including country code > £<value>");
+
+        for (var i = 0; i < accounts.length; i++) {
+          if(accounts[i].id == fromNumber){
+                found = true;
+                var enrolled = accounts[i].enrolled;
+          }
+        }
+
+        if(found == true && enrolled == false){
+          // console.log("You are already registered. Please call this number (+441618506427) to enrol yourself using voice biometrics. "
+          // + "\nOnce you are enrolled, you will be able to use Kinamoni:\n 1. To get Kinamoni visit your local municipal office who will be "
+          // + "able to direct you.\n 2. To check your balance, send 'check balance' to this number.\n 3. To pair with someone, send ''pair"
+          // + "<their phone number including country code> to this number."
+          // + "\n 4. To send money to someone once you have paired with them, send ''send <their phone number including country code > £<value>");
+          twiml.message("You are already registered. Please call this number (+441618506427) to enrol yourself using voice biometrics. "
+          + "\nOnce you are enrolled, you will be able to use Kinamoni:\n 1. To get Kinamoni visit your local municipal office who will be "
+          + "able to direct you.\n 2. To check your balance, send 'check balance' to this number.\n 3. To pair with someone, send ''pair"
+          + "<their phone number including country code> to this number."
+          + "\n 4. To send money to someone once you have paired with them, send ''send <their phone number including country code > £<value>");
+        
+        } else if (found == true && enrolled == true) {
+          // console.log("You are already registered.\n1. To get Kinamoni visit your local municipal office who will be "
+          // + "able to direct you.\n 2. To check your balance, send 'check balance' to this number.\n 3. To pair with someone, send ''pair"
+          // + "<their phone number including country code> to this number."
+          // + "\n 4. To send money to someone once you have paired with them, send ''send <their phone number including country code > £<value>");
+          twiml.message("You are already registered.\n 1. To get Kinamoni visit your local municipal office who will be "
+          + "able to direct you.\n 2. To check your balance, send 'check balance' to this number.\n 3. To pair with someone, send ''pair"
+          + "<their phone number including country code> to this number."
+          + "\n 4. To send money to someone once you have paired with them, send ''send <their phone number including country code > £<value>");
+        } else {
+          accounts.push({id: fromNumber, balance: 500, enrolled: true, pair1: null, pair2: null, pair3: null, pair4: null, pair5: null});
+          // console.log(accounts);
+
+          // console.log("\nHi, welcome to Kinamoni! Please call this number (+441618506427) to enrol yourself using voice biometrics. "
+          // + "\nOnce you are enrolled, you will be able to use Kinamoni:\n 1. To get Kinamoni visit your local municipal office who will be "
+          // + "able to direct you.\n 2. To check your balance, send 'check balance' to this number.\n 3. To pair with someone, send ''pair"
+          // + "<their phone number including country code> to this number."
+          // + "\n 4. To send money to someone once you have paired with them, send ''send <their phone number including country code > £<value>");
+          twiml.message("\nHi, welcome to Kinamoni! Please call this number (+441618506427) to enrol yourself using voice biometrics. "
+          + "\nOnce you are enrolled, you will be able to use Kinamoni:\n 1. To get Kinamoni visit your local municipal office who will be "
+          + "able to direct you.\n 2. To check your balance, send 'check balance' to this number.\n 3. To pair with someone, send ''pair"
+          + "<their phone number including country code> to this number."
+          + "\n 4. To send money to someone once you have paired with them, send ''send <their phone number including country code > £<value>"); 
+
+        }
+        console.log(accounts);
         res.writeHead(200, {'Content-Type': 'text/xml'});
         res.end(twiml.toString());
 
@@ -209,7 +296,6 @@ app.post('/', function(req, res) {
         twiml.message('Sorry, please can you try again?');
         res.writeHead(200, {'Content-Type': 'text/xml'});
         res.end(twiml.toString());
-        console.log('EXPECT-CLOSE');
     }
     
 });
@@ -399,9 +485,7 @@ app.post('/process_enrollment', function(req, res) {
         enrollCount++;
         // VoiceIt requires at least 3 successful enrollments.
         if (enrollCount > 2) {
-          twiml.say(
-            'Thank you, recording recieved. You are now enrolled. You can log in.'
-          );
+          twiml.say('Thank you, recording recieved. You are now enrolled. You can log in.');
           twiml.redirect('/authenticate');
         } else {
           twiml.say(
@@ -464,3 +548,11 @@ app.post('/process_authentication', function(req, res) {
     res.send(twiml.toString());
   });
 });
+
+
+// Hash generator
+function randomString(length, chars) {
+    var result = '';
+    for (var i = length; i > 0; --i) result += chars[Math.floor(Math.random() * chars.length)];
+    return result;
+}
